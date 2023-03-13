@@ -1,0 +1,326 @@
+---
+title: "Assignment 04"
+author: Kendal Barker
+format: 
+  html:
+    self-contained: true
+editor: visual
+editor_options: 
+  chunk_output_type: console
+---
+
+
+\vspace{0.1in}
+
+::: {.callout-tip icon="false"}
+## Required & Recommended Libraries
+
+```{r Load Libraries, echo=TRUE}
+library(tidyverse)
+library(urbnthemes)
+library(knitr)
+library(waffle)
+library(fontawesome)
+library(systemfonts)
+library(extrafont)
+set_urbn_defaults(style = "print")
+library(dplyr)
+library(srvyr)
+library(haven)
+library(scales)
+library(ggplot2)
+library(tinytex)
+library(rmarkdown)
+library(styler)
+library(yaml)
+library(ggrepel)
+```
+:::
+
+
+
+```{r Read Data, echo=TRUE}
+house_prices <- read_csv("train.csv")
+```
+
+
+```{r View Data}
+head(house_prices)
+```
+
+```{r Select Variables}
+# Select variables from the housing data set and calculate summary statistics.
+house_prices %>%
+  select(SalePrice, GrLivArea, TotalBsmtSF, YearBuilt, Neighborhood) %>%
+  summary()
+```
+
+
+
+```{r Graph 1: Boxplot}
+# Calculate Median Sale Price by Neighborhood
+neighborhood_medians <- house_prices %>%
+  group_by(Neighborhood) %>%
+  summarize(median_price = median(SalePrice)) %>%
+  arrange(median_price)
+
+# Add Median Sale Price as New Column
+hp_graph_1 <- house_prices %>%
+  left_join(neighborhood_medians, by = "Neighborhood")
+
+# Reorder Neighborhood by Median Sale Price
+hp_graph_1$Neighborhood <- factor(hp_graph_1$Neighborhood, levels = neighborhood_medians$Neighborhood)
+
+# Create Boxplot with Neighborhoods Ordered by Median Price
+hp_graph_1 %>%
+  ggplot(aes(x = Neighborhood, y = SalePrice)) +
+  geom_boxplot(alpha = 0.7) +
+  scale_y_continuous(label = scales::comma) +
+  labs(
+    x = "Neighborhood",
+    y = "Sale Price ($)",
+    title = "Price of Homes by Neighborhood",
+    subtitle = "The distribution of home sale prices by neighborhood within Ames city limits.",
+    caption = "Data from Kaggle."
+  ) +
+  remove_ticks(axis = "x") +
+  theme(
+    axis.text.x = element_text(
+      angle = 65,
+      size = rel(0.8),
+      vjust = 0.8,
+      hjust = 0.7
+    ),
+    axis.text.y = element_text(size = rel(0.8)),
+    axis.title = element_text(size = rel(1.1)),
+    plot.title = element_text(hjust = 0),
+    plot.subtitle = element_text(hjust = 0),
+    panel.spacing.x = unit(2, "lines"),
+    panel.spacing.y = unit(10, "lines"),
+    panel.grid.major.x = element_blank(),
+    panel.background = element_blank()
+  )
+
+# The graph shows the distribution of home sale prices through different neighborhoods. The box plot shows that there is wide variation in sale prices across neighborhoods, with some neighborhoods showing significantly higher median sale prices than others. This information can be useful for local legislatures  and city planners in Ames who want to understand the housing market in different neighborhoods before making any investment. More research can be done to show why some neighborhood have more valuable homes than others. This graph shows the distribution of home sale prices by neighborhood within Ames city limits. Each box plot represents the range of sale prices for homes within a particular neighborhood in Ames. The neighborhoods are ordered along the x-axis by median sale price, with MeadowV being the least expensive and Northridge the most expensive. The graph indicates that there is considerable variation in home sale prices across neighborhoods with some Ames neighborhoods having much higher median sale prices than others. This information could be useful for policymakers interested in understanding the housing market in Ames. Although more research should be conducted before drawing conclusions, policymakers can use this box plot to inform decisions related to housing in Ames. For example, policymakers might consider land use regulations, such as inclusionary zoning policies, to incentivize real estate developers to include a certain percentage of affordable housing units in new residential developments to increase the availability of affordable housing for low- and moderate-income households, especially in areas with high housing costs and limited affordable housing options.
+```
+
+
+```{r Graph 2: Scatterplot}
+# Create New Variable for Total SqFt
+hp_graph_2 <- house_prices %>%
+  mutate(Total_SF = TotalBsmtSF + GrLivArea)
+## Create a named list to create in a named vector for "Overall Quality" legend breaks.
+OverallQual_List <- list("Very Poor" = min, "Very Excellent" = max)
+OverallQual_Vector <- lapply(OverallQual_List, function(f) f(hp_graph_2$OverallQual))
+# Create Scatterplot to Show Relationship between Square Footage and Sale Price for Housing.
+hp_graph_2 %>%
+  ggplot(aes(x = Total_SF, y = SalePrice)) +
+  geom_point(aes(color = OverallQual),
+             alpha = 0.9,
+             size = 0.9,
+             position = "jitter"
+  ) +
+  scale_y_continuous(label = scales::comma) +
+  scale_color_gradientn(
+    name = "Overall Quality",
+    breaks = unlist(OverallQual_Vector),
+    guide = guide_colorbar(
+      barwidth = 7,
+      barheight = 0.5,
+      label.position = "bottom"
+    )
+  ) +
+  labs(
+    x = "Total Area of Home (Square Feet)",
+    y = "Sale Price ($)",
+    title = "The Price of Space: Examining the Impact of Square Footage on Price & Quality of Home",
+    subtitle = "Overall quality of a house.",
+    caption = "Data from Kaggle."
+  ) +
+  remove_ticks(axis = "x") +
+  theme(
+    axis.text.x = element_text(size = rel(0.8), hjust = 0),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.y = element_blank(),
+    panel.grid.major.x = element_blank(),
+    plot.title = element_text(size = rel(1.04)),
+    plot.subtitle = element_text(size = rel(0.85), face = "italic", hjust = 0.2),
+    axis.text.y = element_text(size = rel(0.8)),
+    axis.title = element_text(size = rel(1.05)),
+    legend.text = element_text(size = rel(0.65), face = "bold", vjust = 0.5),
+    legend.position = c(0.20, 0.99),
+    panel.spacing.y = unit(10, "lines"),
+    panel.spacing.x = unit(2, "lines")
+  )
+
+# Graph 2 depicts the relationship between the total area of homes and and sale price of homes. The data indicates that there is a positive relationship between the total area of homes and their sale prices, with larger homes typically selling at higher price points.
+
+# Also, Graph 2 indicates that the overall quality of a home is another factor that helps to determine the sale price of a home, with homes of higher overall quality generally selling for higher prices.
+
+# While the variables of sale price, overall quality, and square footage are important considerations for understanding the housing market in Ames, they may not directly help policymakers determine policies related to affordable housing or the needs of specific demographic groups. However, the insights from Graph 2 can help policymakers understand the broader housing market in Ames and develop policies accordingly. Policymakers seeking to understand what factors contribute to the price of homes can use Graph 2 to identify potential points for policy intervention.
+
+# For example, if policymakers want to address climate change and promote sustainable development, they might create incentives for construction of higher quality homes more energy-efficient homes, regardless of their size or sale price. Additionally, policymakers may use the information provided by Graph 1 to identify neighborhoods where there is a need for more affordable housing options. By understanding the distribution of sale prices across neighborhoods, policymakers can identify areas where there may be a lack of affordable housing options and work with developers to build high quality, yet affordable, housing units.
+```
+
+
+```{r Graph 3: Density Plot}
+house_prices_filtered <- house_prices %>%
+  drop_na(MSZoning) %>%
+  filter(!MSZoning %in% c(
+    "C (all)",
+    "Commercial",
+    "Industrial",
+    "Agriculture"
+  )) %>%
+  mutate(MSZoning_Residential_Detail = case_when(
+    MSZoning == "RM" ~ "Medium Density",
+    MSZoning == "FV" ~ "Floating Village",
+    MSZoning == "RH" ~ "High Density",
+    MSZoning == "RL" ~ "Low Density",
+    MSZoning == "RP" ~ "Low Density Park",
+    TRUE ~ as.character(MSZoning)
+  ))
+
+house_prices_filtered_summary <- house_prices_filtered %>%
+  group_by(MSZoning_Residential_Detail) %>%
+  summarize(
+    mean_sale_price = mean(SalePrice),
+    median_sale_price = median(SalePrice)
+  )
+
+# Create plot with density plot and fill by zone density
+library(stringr)
+
+# Create plot with density plot and fill by zone density
+hp_graph_3 <- house_prices_filtered %>%
+  ggplot(mapping = aes(x = SalePrice)) +
+  scale_fill_manual(values = urbnthemes::palette_urbn_cyan[4:8]) +
+  geom_density(
+    mapping = aes(
+      color = MSZoning_Residential_Detail,
+      fill = MSZoning_Residential_Detail
+    ),
+    alpha = 0.5
+  ) +
+  scale_color_manual(values = urbnthemes::palette_urbn_cyan[4:8]) +
+  geom_label_repel(
+    data = house_prices_filtered_summary,
+    aes(
+      x = mean_sale_price,
+      y = dnorm(mean_sale_price, mean(house_prices_filtered$SalePrice), sd(house_prices_filtered$SalePrice)),
+      label = paste0("Avg. Price: $", scales::comma(round(mean_sale_price))),
+      color = MSZoning_Residential_Detail
+    ),
+    arrow = arrow(length = unit(0.04, "npc")),
+    label.r = 0.15,
+    label.size = 0.25,
+    size = 2.5,
+    nudge_y = 0.000006,
+    nudge_x = 200000
+  ) +
+  geom_vline(aes(xintercept = mean(SalePrice)),
+             color = "darkgray",
+             linetype = "dashed",
+             linewidth = 0.3
+  ) +
+  geom_vline(
+    data = house_prices_filtered_summary,
+    aes(
+      xintercept = mean_sale_price,
+      color = MSZoning_Residential_Detail
+    ),
+    linetype = "dashed",
+    linewidth = 0.3
+  ) +
+  stat_function(
+    fun = dnorm,
+    args = list(
+      mean = mean(house_prices_filtered$SalePrice),
+      sd = sd(house_prices_filtered$SalePrice)
+    ),
+    geom = "line",
+    color = "darkgray",
+    size = 0.3
+  ) +
+  facet_wrap(~MSZoning_Residential_Detail) +
+  scale_x_continuous(
+    expand = expansion(mult = c(0.002, 0)),
+    limits = c(0, NA),
+    labels = scales::comma
+  ) +
+  scale_y_continuous(
+    expand = expansion(mult = c(0, 0.02)),
+    labels = scales::number
+  ) +
+  labs(
+    x = "Sale Price ($)",
+    y = "Density",
+    title = "Zoned In: Exploring Average Home Prices Across Residential Zones",
+    caption = "Data from Kaggle.",
+    subtitle = str_wrap("In Ames, the mean sale price across all residential zones is $180,921, which is marked by the vertical gray line. For each residential zone, the average sale price of a home is labelled. ", width = 75)
+  ) +
+  remove_ticks(axis = "x") +
+  theme(
+    legend.position = "none",
+    axis.text.x = element_text(size = rel(0.8)),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.y = element_blank(),
+    panel.grid.major.x = element_blank(),
+    plot.title = element_text(hjust = 0.5),
+    plot.subtitle = element_text(hjust = 0.5, size = rel(0.9)),
+    axis.text.y = element_text(size = rel(0.8)),
+    axis.title = element_text(size = rel(1.05))
+  )
+
+hp_graph_3
+
+# Graph 3 is a density plot showing the distribution of home sale prices across different residential zones in Ames. The graph is color-coded by residential zone and also includes labels for the average sale price of homes within each zone. The vertical gray line indicates the overall mean sale price across all residential zones, which is $180,921. While more research is required to determine why certain residential zones may have more affordable housing options than average, Graph 3 can inform policy topics related to housing affordability and zoning regulations, as it highlights the variability of home sale prices across different zones.
+```
+
+
+
+```{r Graph 4: Stacked Bar Plot}
+house_prices %>%
+  mutate(
+    YearSold = factor(YrSold),
+    MonthSold = factor(MoSold, labels = month.name)
+  ) %>%
+  group_by(YearSold) %>%
+  count(MonthSold) %>%
+  group_by(MonthSold) %>%
+  arrange(desc(YearSold)) %>%
+  mutate(label_height = cumsum(n)) %>%
+  ggplot() +
+  geom_col(mapping = aes(x = MonthSold, y = n, fill = YearSold)) +
+  geom_text(aes(x = MonthSold, y = label_height - 3, label = n), size = 1.2) +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.1)), breaks = seq(0, max(260), by = 40)) +
+  labs(
+    x = "Month Sold",
+    y = "Number of Homes Sold",
+    title = "Analyzing Ames Real Estate: Monthly Sales Trends",
+    subtitle = "Number of homes sold each month from 2006 to 2010.",
+    caption = "Data from Kaggle."
+  ) +
+  scale_fill_manual(
+    name = "Year Sold",
+    values = c("#ca5800", "#fdd870", "#fff2cf", "#b2df8a", "#33a02c")
+  ) +
+  remove_ticks(axis = "both") +
+  theme(
+    axis.text.x = element_text(size = rel(0.7), angle = 45, hjust = 0.7),
+    panel.grid.major.y = element_line(size = 0.2),
+    panel.grid.minor.y = element_blank(),
+    legend.position = "right",
+    legend.direction = "vertical",
+    plot.title = element_text(hjust = 0.5),
+    plot.subtitle = element_text(hjust = 0.5, size = rel(0.85)),
+    axis.text.y = element_text(size = rel(0.8)),
+    axis.title = element_text(size = rel(1.05))
+  )
+
+# Graph 4 is a stacked bar plot that shows the number of homes sold in Ames for each month from 2006 to 2010. The graph indicates that the number of homes sold each month varies from year to year, with more homes typically being sold in the summer months of May, June, July This information can be useful for policymakers who want to understand the cyclical nature of the housing market in Ames and make informed decisions that relate to property sales.Furthermore, Graph 4 can be used to inform housing development policies by identifying which months are the most active in terms of home sales. For example, if policymakers are interested in promoting new home construction in Ames, they may want to incentivize construction projects in the fall and winter months. Additionally, policymakers might use Graph 4 to understand how the housing market in Ames has changed over time. By comparing the number of homes sold each month in different years, policymakers can identify trends in the market and develop policies accordingly. For example, there were no homes sold in Ames between August 2010 to December 2010, unless this data set is incomplete.
+```
+
+```{r Analysis}
+# All four graphs provide insights into the housing market in Ames that can inform policy making related to housing affordability, zoning regulations, and sustainable development. By understanding the distribution of sale prices across neighborhoods, the factors that contribute to home sale prices, the variability of home sale prices across different zones, and the cyclical nature of the housing market, policymakers can develop effective policies to meet the diverse housing needs of Ames residents.
+```
